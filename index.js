@@ -1,8 +1,13 @@
 const express = require('express');
+// cors
 const cors = require('cors');
+// jsonwebtoken
 const jwt = require('jsonwebtoken');
+// cookie-parser'
 const cookieParser = require('cookie-parser');
+// mongo db
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+// dotenv
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 const app = express();
@@ -10,11 +15,11 @@ const app = express();
 //middleware
 // app.use(cors({
 //     origin: ['http://localhost:5173'],
-//     credentials: true,
+//     credentials: true
 // }))
 app.use(cors({
     origin: ['http://localhost:5173'],
-    credentials: true
+    credentials: true,
 }))
 app.use(express.json())
 app.use(cookieParser())
@@ -36,7 +41,7 @@ const client = new MongoClient(uri, {
 
 //my custom middleware
 const logger = async (req, res, next) => {
-    console.log("called", req.host, req.originalUrl);
+    console.log("Log: info", req.method, req.url, req.host, req.originalUrl);
     next();
 }
 
@@ -72,18 +77,40 @@ async function run() {
 
         const servicesCollection = client.db("carDoctor").collection("services");
         const bookingsCollection = client.db("carDoctor").collection("bookings");
+        //Auth related api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            console.log("user for token", user);
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24h'})
+            res
+            .cookie('token', token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'none'
+            })
+            .send({success: true})
+        })
+        // if logout then auth related api
+        app.post('/logout', async(req, res)=> {
+            const user = req.body;
+            console.log('logout user', user)
+            res.clearCookie('token', { maxAge: 0 }).send({success: true})
+        })
+
+
+
 
         //auth related api
-        app.post('/jwt', logger, async (req, res) => {
-            const user = req.body;
-            console.log(user);
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
-            res.status(200).cookie('token', token, {
-                httpOnly: true,
-                secure: false,
-            });
-            res.send({ success: true })
-        })
+        // app.post('/jwt', logger, async (req, res) => {
+        //     const user = req.body;
+        //     console.log(user);
+        //     const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
+        //     res.status(200).cookie('token', token, {
+        //         httpOnly: true,
+        //         secure: false,
+        //     });
+        //     res.send({ success: true })
+        // })
 
 
 
@@ -112,7 +139,7 @@ async function run() {
         // bookings related api
         app.get("/book", logger, verifyToken, async (req, res) => {
             console.log("email", req.query.email);
-            console.log("user in the valid token", req.user)
+            console.log("cook cook cookies", req.user)
             // console.log("token of cookies", req.cookies.token)
 
             //check if the user emil and token-user email is same or not
